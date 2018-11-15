@@ -15,32 +15,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += main.cpp \
-    code_01.02.cpp \
-    code_ex_01.01.cpp \
-    code_ex_01.02.cpp \
-    code_ex_01.03.cpp \
-    code_ex_01.04.cpp \
-    code_list_02.01.cpp \
-    code_ex_02.01.cpp \
-    code_ex_02.02.cpp \
-    code_ex_02.03.cpp \
-    code_ex_02.04.cpp \
-    code_ex_02.05.cpp \
-    code_ex_03.01.cpp \
-    code_ex_03.02.cpp \
-    code_ex_03.03.cpp \
-    code_ex_03.04.cpp \
-    code_ex_03.05.cpp \
-    code_ex_04.01.cpp \
-    code_ex_04.02.cpp \
-    code_ex_04.03.cpp \
-    code_list_05.02.cpp \
-    code_ex_05.02.cpp \
-    code_list_05.03.cpp \
-    code_ex_05.03.cpp \
-    code_ex_05.04.cpp \
-    code_ex_05.05.cpp \
-    code_ex_06.01.cpp
+    code_ex_06.05.cpp \
 
 DISTFILES += \
     code_01.02
