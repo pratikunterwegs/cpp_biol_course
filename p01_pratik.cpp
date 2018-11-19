@@ -7,77 +7,31 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <bitset>
 
 using namespace std;
 
 //define a function to update the value of the entire pattern at once
-vector<int> updatePattern(vector<int> &pattern, int &iRuleChoice){
+vector<int> updatePattern(vector<int> &pattern, bitset<8> rule){
 
     //get the vector size
     const int iPatternSize = pattern.size();
-
     //make a duplicate vector for reference
     vector<int> vecTmp = pattern;
 
     //iterate along the elements
     for(int i = 0; i < iPatternSize; ++i)
     {
+        //define iLeft, iRight, and iFocal
+        int iFocal = vecTmp[i];
+        int iLeft = i == 0 ? vecTmp[iPatternSize - 1] : vecTmp[i - 1];
+        int iRight = i == 249 ? vecTmp[0] : vecTmp[i + 1];
+
         //define a variable for the sum of i-1, i, and i+1
-        int iLocalSum;
+        int iLocalSum = (4 * iLeft) + (2 * iFocal) + (iRight);
 
-        /*check if the position is 0 or n-1, special cases,
-         * and compute the iLocalSum value.
-         * this could have been a switch, but meh...it works */
-
-        if(i == 0)
-            iLocalSum = (100*vecTmp[iPatternSize-1])+(10*vecTmp[i])+(vecTmp[i+1]);
-        else if(i == (iPatternSize-1))
-            iLocalSum = (100*vecTmp[i-1])+(10*vecTmp[i])+(vecTmp[0]);
-        else
-            iLocalSum = (100*vecTmp[i-1])+(10*vecTmp[i])+(vecTmp[i+1]);
-
-        /* add the choice of rule to follow as another switch*/
-
-        switch(iRuleChoice){
-         case 1:
-            /*run through 2 main sets of cases for values of iLocalSum --
-            where value of i changes, and where not*/
-            switch (iLocalSum) {
-            case 111:
-                pattern[i] = 0;
-                break;
-            case 110:
-                pattern[i] = 0;
-                break;
-            case 100:
-                pattern[i] = 1;
-                break;
-            case 1:
-                pattern[i] = 1;
-                break;
-            case 11: case 10:
-            case 101: case 0:
-                break;
-            }
-            break;
-         case 2:
-            switch (iLocalSum) {
-                    case 111:
-                        pattern[i] = 0;
-                        break;
-                    case 101:
-                        pattern[i] = 1;
-                        break;
-                    case 1:
-                        pattern[i] = 1;
-                        break;
-                    case 11: case 10:
-                    case 100: case 0:
-                    case 110:
-                        break;
-            }
-
-        }
+        //update the pattern
+        pattern[i] = rule[iLocalSum];
 
    }
     //return the pattern vector
@@ -87,24 +41,24 @@ vector<int> updatePattern(vector<int> &pattern, int &iRuleChoice){
 //begin the main function
 int main(){
 
-    //ask for which rule to follow
-    cout << "Which rule, 30 or 110, do you want the cellular automaton to follow?"
-         << "\n\n"
-         << "Enter your choice, 1 for rule 30, 2 for rule 110.\n"
+    //ask for rule
+    cout << "Enter the cellular automaton rule (1 -- 256):\n"
          << endl;
+    //get rule choice
+    int iRuleChoice; cin >> iRuleChoice;
 
-    int iRuleChoice;
-    cin >> iRuleChoice;
+    //define the rule output
+    bitset<8> rule = iRuleChoice;
 
-    //quit if the choice is neither 1 nor 2
-    if(iRuleChoice != 1 && iRuleChoice != 2)
+    //quit if the choice is higher than 256
+    if(iRuleChoice > 256)
       {
         cout << "You have entered an invalid choice, exiting now." << endl;
         return 0;
     }
 
     //inform user of their choice
-    cout << "You chose rule " << (iRuleChoice == 1? "30": "110") << endl;
+    cout << "You chose rule " << iRuleChoice << endl;
 
     //declare a vector to hold pattern values, set vec[0] = 1
     vector<int> pattern(250,0);
