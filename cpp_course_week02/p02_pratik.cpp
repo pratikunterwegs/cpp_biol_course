@@ -6,6 +6,7 @@
 #include <boost/algorithm/string/replace.hpp> //using boost
 #include <fstream>
 #include <cmath>
+#include <vector>
 
 using namespace std;
 
@@ -83,21 +84,43 @@ struct turtle
 };
 
 //write a turtleplot function
-void turtlePlot(const string &symbol, turtle &myTurtle,
-                turtle &memoryTurtle, double &turnAngle){
+void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vector<turtle> &memoryTurtle){
     //calculate turnAngle/360
     double turnAngleCirc = 2 * pi * (turnAngle/360.0);
 
-    //initialise the turtles with x, y, alpha, and iteration
-    memoryTurtle = myTurtle = {0, 0, 0, 0};
+    //initialise the turtle with x, y, alpha, and iteration
+    myTurtle = {0.0, 0.0, 0.0, 0};
 
     //say where turtle starts
     cout << "step 0: this is your turtle standing by at 0,0...\n";
     cout << "the command sequence is "
          << symbol << endl;
 
+    //open an ofstream
+    //WARNING, this ofstream appends to a pre-existing file!
+    ofstream ofs("../data_turtle_pos_p01_pratik.csv",
+                  ofstream::out | ofstream::app);
     //run through loop of length symbol.length()
     for(int i = 0; i < symbol.length(); ++i){
+
+        //here, write the turtle pos to file
+        //this is the start point of the segment
+        //
+        //check if not open, then produce error
+         if(!ofs.is_open()){
+             cerr << "output stream for turtle positions could not be opend"
+                  << endl;
+             exit(EXIT_FAILURE);
+         }
+         //if open write the initial position to file
+         else{
+             if(i == 0)
+                 ofs << "x,y,angle,step,command\n";
+             //write position
+             ofs << myTurtle.x << "," << myTurtle.y << ","
+                 << myTurtle.alpha << ","
+                 << i << "," << symbol[i] << endl;
+         }
 
         //set turtle iterator
         myTurtle.n = i;
@@ -109,27 +132,34 @@ void turtlePlot(const string &symbol, turtle &myTurtle,
             //get the next coordinate
             myTurtle.x += cos(myTurtle.alpha);
             myTurtle.y += sin(myTurtle.alpha);
+
             //output new position
             cout << "step " << i+1 << "...turtle moved to "
                  << myTurtle.x << "," << myTurtle.y
                  << endl;
             break;
-        //if case L, save turtle position as the other turtle and turn L
-            //here, set alpha, the turn angle, to
-            // 2*pi*(40/360)
+
+        //save pos and turn left
         case 'L':
-            memoryTurtle = myTurtle;
+            //save current position
+            memoryTurtle.push_back(myTurtle);
             cout << "turtle saved position at step " << i << endl;
+            //turn left
             myTurtle.alpha += turnAngleCirc;
             cout << "step " << i+1
                  << " turtle turned " << turnAngle << "° left\n";
             break;
-        //restore previous turtle and change turning angle to R
+
+        //restore previous turtle and turn right
         case 'R':
-            myTurtle = memoryTurtle;
+            //restore most recent position
+            myTurtle = memoryTurtle.back();
+            //forget most recent saved pos
+            memoryTurtle.pop_back();
             cout << "step " << i+1
                  << " turtle restored position and heading to step "
-                 << memoryTurtle.n << endl;
+                 << myTurtle.n << endl;
+            //turn right
             myTurtle.alpha -= turnAngleCirc;
             cout << "step " << i+1 << " turtle turned " << turnAngle
                  << "° right\n";
@@ -138,32 +168,15 @@ void turtlePlot(const string &symbol, turtle &myTurtle,
         default: cerr << "unrecognised command, turtle quits.\n\n";
             exit(EXIT_FAILURE);
         }
-        //open output stream and write turtle position, command, iteration
-        //warning, this ofstream appends to a pre-existing file!
-         ofstream ofs("../data_turtle_pos_p01_pratik.csv",
-                      ofstream::out | ofstream::app);
-         //check if not open, then produce error
-         if(!ofs.is_open()){
-             cerr << "output stream for turtle positions could not be opend"
-                  << endl;
-             exit(EXIT_FAILURE);
-         }
-         else {
-             if(i ==0){
-                 //write column names, hardcode start
-                 ofs << "x,y,angle,step,command" << endl;
-                 ofs << "0,0,0,0,NA" << endl;
-             }
-             //write positions
-             ofs << myTurtle.x << "," << myTurtle.y << ","
+            //the ofstream is still open!
+            //write positions
+            ofs << myTurtle.x << "," << myTurtle.y << ","
                  << myTurtle.alpha << ","
-                 << i+1 << "," << symbol[i] << endl;
-         }
-         //close ofstream
-         ofs.close();
+                 << i << "," << symbol[i] << endl;
+       }
+       //close ofstream after loop
+       ofs.close();
     cout << endl;
-    }
-
 }
 
 //main function
@@ -176,10 +189,12 @@ int main()
     double turnAngle = 40.0;
     //generate sequences
     generateSequence(symbol, 6);
-    //make turtles
-    turtle myTurtle, memoryTurtle;
+    //make turtle
+    turtle myTurtle;
+    //create a memory turtle, a vector of positions to hold saved vals
+    vector<turtle> memoryTurtle;
     //plot turtle positions
-    turtlePlot(symbol, myTurtle, memoryTurtle, turnAngle);
+    turtlePlot(symbol, myTurtle, turnAngle, memoryTurtle);
     return 0;
 }
 
