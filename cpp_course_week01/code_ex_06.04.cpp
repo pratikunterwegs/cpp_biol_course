@@ -1,4 +1,4 @@
-/* removing duplicates from a vector */
+/* largest val from a vector */
 
 #include <iostream>
 //#include <cmath>

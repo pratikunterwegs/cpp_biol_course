@@ -23,7 +23,6 @@ string transcribe(const string &dna){
     return rna;
 }
 
-
 int main()
 {
     //ask for input

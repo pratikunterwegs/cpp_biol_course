@@ -13,7 +13,7 @@ void codons(const string &rna){
 
     string codon;
     cout << "The codons are: ";
-    for(int i = startRNA; i < rna.size(); i+=3){
+    for(int i = startRNA; i < rna.size()-3; i+=3){
         //print codons
         codon = rna.substr(i, 3);
         cout << codon << " ";
@@ -29,8 +29,6 @@ void codons(const string &rna){
      }
 }
 
-
-using namespace std;
 int main()
 {
     string rna;
