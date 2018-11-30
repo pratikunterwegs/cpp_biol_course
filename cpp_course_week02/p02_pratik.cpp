@@ -80,7 +80,7 @@ void generateSequence(string &symbol, int n){
 struct turtle
 {
     double x, y, alpha;
-    int n;
+    int n, bifurcations;
 };
 
 //write a turtleplot function
@@ -89,7 +89,9 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
     double turnAngleCirc = 2 * pi * (turnAngle/360.0);
 
     //initialise the turtle with x, y, alpha, and iteration
-    myTurtle = {0.0, 0.0, 0.0, 0};
+    myTurtle = {0.0, 0.0, 0.0, 0, 0};
+    //set memory turtle
+    memoryTurtle.push_back(myTurtle);
 
     //say where turtle starts
     cout << "step 0: this is your turtle standing by at 0,0...\n";
@@ -97,11 +99,12 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
          << symbol << endl;
 
     //open an ofstream
-    //WARNING, this ofstream appends to a pre-existing file!
-    ofstream ofs("../data_turtle_pos_p01_pratik.csv",
-                  ofstream::out | ofstream::app);
+    ofstream ofs("../data_turtle_pos_p02_pratik.csv");
     //run through loop of length symbol.length()
     for(int i = 0; i < symbol.length(); ++i){
+
+        //define command
+        char command = symbol[i];
 
         //here, write the turtle pos to file
         //this is the start point of the segment
@@ -119,19 +122,22 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
              //write position
              ofs << myTurtle.x << "," << myTurtle.y << ","
                  << myTurtle.alpha << ","
-                 << i << "," << symbol[i] << endl;
+                 << i << "," << command << endl;
          }
 
         //set turtle iterator
         myTurtle.n = i;
         //output symbol read
-        cout << "received " << symbol[i] << ": \n";
+        cout << "received " << command << ": \n";
         //operate switch on instruction at symbol[i]
         switch (symbol[i]) {
         case 'A': case 'B':
-            //get the next coordinate
-            myTurtle.x += cos(myTurtle.alpha);
-            myTurtle.y += sin(myTurtle.alpha);
+
+            //get the next coordinate implementing 20% reduction
+            myTurtle.x += cos(myTurtle.alpha) *
+                    pow(0.8, myTurtle.bifurcations);
+            myTurtle.y += sin(myTurtle.alpha) *
+                    pow(0.8, myTurtle.bifurcations);
 
             //output new position
             cout << "step " << i+1 << "...turtle moved to "
@@ -146,6 +152,9 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
             cout << "turtle saved position at step " << i << endl;
             //turn left
             myTurtle.alpha += turnAngleCirc;
+
+            //increase bifurcation count
+            ++ myTurtle.bifurcations;
             cout << "step " << i+1
                  << " turtle turned " << turnAngle << "° left\n";
             break;
@@ -159,6 +168,8 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
             cout << "step " << i+1
                  << " turtle restored position and heading to step "
                  << myTurtle.n << endl;
+            //reduce bifurcation count
+            ++ myTurtle.bifurcations;
             //turn right
             myTurtle.alpha -= turnAngleCirc;
             cout << "step " << i+1 << " turtle turned " << turnAngle
@@ -172,9 +183,10 @@ void turtlePlot(const string &symbol, turtle &myTurtle, double &turnAngle, vecto
             //write positions
             ofs << myTurtle.x << "," << myTurtle.y << ","
                  << myTurtle.alpha << ","
-                 << i << "," << symbol[i] << endl;
+                 << i << "," << command << endl;
        }
        //close ofstream after loop
+       cout << "written to file...\n" << endl;
        ofs.close();
     cout << endl;
 }
@@ -188,7 +200,7 @@ int main()
     //define turning angle; sparse trees likely result from smaller angles
     double turnAngle = 40.0;
     //generate sequences
-    generateSequence(symbol, 6);
+    generateSequence(symbol, 7);
     //make turtle
     turtle myTurtle;
     //create a memory turtle, a vector of positions to hold saved vals

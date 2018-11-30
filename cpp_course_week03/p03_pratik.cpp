@@ -1,0 +1,229 @@
+/*
+ * a program to grow some protofilaments
+ *
+ * first, make an empty vector
+ * draw the first element of the vector as the "base"
+ * this could also be 0, the first element, easier.
+ *
+ * add a dimer: the distance to the barrier will now
+ * be 0 nm for this protofil.
+ * relative to the previous element, the next
+ * dimer's position is now h/13 lower/higher = or 8/13 lower/higher.
+ * the distance to the barrier for this next protofil
+ * is thus h/13. the next (3rd) PF is 2h/13 lower or higher than the first,
+ * and equally far from the barrier.
+ * make a vector of 13 such PFs.
+ *
+ * at each step, choose a random PF. check if it's distance
+ * to the barrier is < 8nm, one dimer length.
+ * implement the probability of attaching or detaching
+ * another dimer there. -- increasing or decreasing position by 8 nm.
+ *
+ * Mt = microtubule; Pf = protofilament
+ */
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <exception>
+#include <cstdlib>
+#include <random>
+#include <chrono>
+#include <algorithm>
+#include <cmath>
+std::mt19937_64 rng;
+
+using namespace std;
+
+//system parameters
+const int nFils = 13; //pfs in an mt
+const double dimerLength = 8.0; //dimer length in nm (1e-9)
+const double offset = dimerLength / 13.0; //offset length in nM (1e-9)
+const double tMax = 300.0; //time limit for the Gillespie loop
+const double Temp = 298.0; //temp in K
+const double kB = 1.3806485 * pow(10, -23);
+const int nEvents = 2; //implemet 2 events - dimer on or off
+double force = 1.0 * pow(10, -12); //force starts at 1 piconewton
+const double kOn = 200.0; //rate of elongation per minute
+const double kOff = 50.0; //rate of contraction
+
+//sim params
+const int nSims = 200; //how many runs
+
+//initial Mt vector
+vector<double> tubule (nFils, 0);
+
+//length vector
+vector<int> lengthMt (nFils);
+
+//function to make first level of the tubule
+void initialMt(vector<double> &tubule)
+{
+    //set up random number generator
+    chrono::high_resolution_clock::time_point tp =
+                        chrono::high_resolution_clock::now();
+    unsigned seed = static_cast<unsigned> (tp.time_since_epoch().count());
+    //write seed to log
+    clog << "random seed : " << seed << "\n";
+    //create rng and assign seed
+    rng.seed(seed);
+
+    //initial Mt config
+    for(int i = 0; i < nFils; ++i)
+    {
+        tubule[i] = dimerLength -  static_cast<double> (i) * offset;
+    }
+
+    //set the length vector to 1
+    lengthMt = vector<int> (nFils, 1);
+}
+
+//function to choose a position and grow/shrink protofilament
+void updateMt(vector<double> &tubule)
+{
+    //update the current length
+    //getLengthMt(tubule, lengthMt);
+    //write a gillespie algorithm to...
+    for(double t = 0.0; t < tMax;)
+    {
+        //get the current max length - the barrier is here
+        int maxTubule = *max_element(tubule.begin(), tubule.end());
+
+        //choose a random Pf
+        uniform_int_distribution<int> pfPicker(0, nFils - 1);
+        int randPf = pfPicker(rng);
+        //get deltaX: how much the barrier would have to expand
+        double diffBarrier = maxTubule - tubule[randPf];
+        double deltaX = dimerLength - diffBarrier;
+
+        //cout << "randomly chosen Pf is " << randPf
+        //    << " at distance from barrier " << diffBarrier << endl;
+
+        //choose a random event to occur
+        //make rates vector
+        vector<double> vecRates (nEvents);
+        //dimer on probability - switch by distance to barrier
+        double attach = deltaX > 0.0 ? kOn * exp(-(force * deltaX * 1e-9) / (kB * Temp)): kOn;
+        //cout << "the attach rate is now " << attach << "\n\n";
+        vecRates[0] = attach/(kOff + attach); //dimer on
+        //cout << "attach probability = " << vecRates[0] << endl;
+        vecRates[1] = kOff/(kOff + attach); //dimer off
+
+        //get wait time to the next event
+        double sum = 0.0;
+        for(int i = 0; i < nEvents; i++)
+        {
+            sum += vecRates[i];
+        }
+        //quit if the sum of rates < 0
+        if(sum <= 0.0)
+            cerr << "unable to draw wait time!\n";
+
+        //draw a waitTime from an exponential distr
+        exponential_distribution<double> waitTime(sum);
+        const double dt = waitTime(rng); //decide time increment
+
+        //randomly choose between dimer on or off
+        discrete_distribution<int> drawEvent(vecRates.begin(),
+                                             vecRates.end());
+        const int event = drawEvent(rng);
+
+        //depending on the event, update the height of the chosen
+        //protofilament
+        //cout << "pf " << randPf << " will be "
+         //    << (event > 0 ? " reduced \n" : " grown \n");
+        switch (event) {
+        case 0: tubule[randPf] += dimerLength;
+            ++lengthMt[randPf]; //increase length
+            break; //grow pf
+        case 1: tubule[randPf] -= dimerLength;
+            --lengthMt[randPf];
+            break; //reduce pf
+        default: cerr << "errr...couldn't chose an event...\n\n";
+            break;
+        }
+
+        t += dt; //increment timestep
+
+    }
+}
+
+
+//function to print microtubule
+void printMt(const vector<double> &tubule)
+{
+    //print height of Pfs
+    cout << "Pf locs = " << endl;
+    for(int i = 0; i < nFils; ++i)
+    {
+        cout << tubule[i] << ", ";
+    }
+    cout << endl;
+
+    //print distanc to barrier
+    cout << "\nthe distance to barrier is\n\n";
+    for(int i = 0; i < nFils; ++i)
+    {
+        cout << *max_element(tubule.begin(), tubule.end()) - tubule[i]
+             << ", ";
+    }
+    cout << endl;
+
+    //print the deltaX
+    cout << "\nto accommodate another dimer, the barrier must move\n\n";
+    for(int i = 0; i < nFils; ++i)
+    {
+        double diffBarrier = (*max_element(tubule.begin(), tubule.end()) - tubule[i]);
+        cout << ((diffBarrier < dimerLength) ? diffBarrier - dimerLength : 0)
+             << ", ";
+    }
+    cout << "\n\n";
+}
+
+//main function
+int main()
+{
+    //open ofstream
+    ofstream ofs("../data_p03_pratik.csv");
+    //exit if not opened
+    if(!ofs.is_open())
+    {
+        cerr << "could not open output stream...exiting...\n\n";
+        exit(EXIT_FAILURE);
+    }
+    else
+        cout << "output stream opened...\n\n";
+    //write column names
+    ofs << "sim, force, length_start, length_final, time_steps\n";
+
+    //use a range of forces until stall force
+    for(double forceIt = 1.0e-12; forceIt < 12.0e-12; forceIt+= 1.0e-12)
+    {
+        //run a loop for 200 simulations
+        for(int iterator = 0; iterator < 20; ++iterator)
+        {
+
+            cout << "force = " << force << ", iteration = " << iterator << endl;
+            //initialise the new microtubule
+            initialMt(tubule);
+            ofs << iterator << ",  " << force << ",";
+            //getLengthMt(tubule, lengthMt);
+            ofs << *max_element(lengthMt.begin(), lengthMt.end()) << ",";
+            //run the Gillespie loop until tMax = 200
+            updateMt(tubule);
+            //getLengthMt(tubule, lengthMt);
+            ofs << *max_element(lengthMt.begin(), lengthMt.end()) << "," << tMax
+                << endl;
+            //printMt(tubule);
+
+        }
+        force = forceIt;
+    }
+    cout << "\n\nsimulations run...\n"
+         << "\nMove to R code to summarise and plot!\n"
+         << endl;
+
+    //close the ofstream
+    ofs.close();
+    return 0;
+}
