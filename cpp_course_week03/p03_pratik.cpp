@@ -41,9 +41,9 @@ const double dimerLength = 8.0; //dimer length in nm (1e-9)
 const double offset = dimerLength / 13.0; //offset length in nM (1e-9)
 const double tMax = 300.0; //time limit for the Gillespie loop
 const double Temp = 298.0; //temp in K
-const double kB = 1.3806485 * pow(10, -23);
-const int nEvents = 2; //implemet 2 events - dimer on or off
-double force = 1.0 * pow(10, -12); //force starts at 1 piconewton
+const double kB = 1.38e-23;
+const int nEvents = nFils + 1; //implemet 2 events - dimer on or off
+double force = 1.0e-12; //force starts at 1 piconewton
 const double kOn = 200.0; //rate of elongation per minute
 const double kOff = 50.0; //rate of contraction
 
@@ -54,7 +54,7 @@ const int nSims = 200; //how many runs
 vector<double> tubule (nFils, 0);
 
 //length vector
-vector<int> lengthMt (nFils);
+vector<int> lengthMt (nFils, 1);
 
 //function to make first level of the tubule
 void initialMt(vector<double> &tubule)
@@ -74,44 +74,42 @@ void initialMt(vector<double> &tubule)
         tubule[i] = dimerLength -  static_cast<double> (i) * offset;
     }
 
-    //set the length vector to 1
-    lengthMt = vector<int> (nFils, 1);
 }
 
 //function to choose a position and grow/shrink protofilament
 void updateMt(vector<double> &tubule)
 {
-    //update the current length
-    //getLengthMt(tubule, lengthMt);
-    //write a gillespie algorithm to...
+    vector<double> vecRates (nFils);
+    //cout << "made vecrates vector" << endl;
     for(double t = 0.0; t < tMax;)
     {
+
         //get the current max length - the barrier is here
-        int maxTubule = *max_element(tubule.begin(), tubule.end());
+        double maxTubule = *max_element(tubule.begin(), tubule.end());
+        //cout << "maxtubule length is " << maxTubule << endl;
+        //a vector to hold the rates of addition of each Pf
 
-        //choose a random Pf
-        uniform_int_distribution<int> pfPicker(0, nFils - 1);
-        int randPf = pfPicker(rng);
-        //get deltaX: how much the barrier would have to expand
-        double diffBarrier = maxTubule - tubule[randPf];
-        double deltaX = dimerLength - diffBarrier;
+        for(int j = 0; j < nFils; ++j)
+        {   //cout << "getting attachment rates"<< endl;
+            //get deltaX: how much the barrier would have to expand
+            double diffBarrier = maxTubule - tubule[j];
+            //cout << "diff barrier " << j << " is " << diffBarrier << endl;
+            double deltaX = dimerLength - diffBarrier;
+            //cout << "delta x" << j << " is " << deltaX << endl;
+            double attach = deltaX > 0.0 ? kOn * exp(-(force * deltaX * 1e-9) / (kB * Temp)): kOn;
+            //cout << "attachment rate " << j << "is " << attach << endl;
+            vecRates[j] = attach;
+            //cout << vecRates[j];
 
-        //cout << "randomly chosen Pf is " << randPf
-        //    << " at distance from barrier " << diffBarrier << endl;
-
-        //choose a random event to occur
+        }
+        //choose a random event to occur -  the events are
+        //the addition of dimers to any tubule, and the removal from any pf
         //make rates vector
-        vector<double> vecRates (nEvents);
-        //dimer on probability - switch by distance to barrier
-        double attach = deltaX > 0.0 ? kOn * exp(-(force * deltaX * 1e-9) / (kB * Temp)): kOn;
-        //cout << "the attach rate is now " << attach << "\n\n";
-        vecRates[0] = attach/(kOff + attach); //dimer on
-        //cout << "attach probability = " << vecRates[0] << endl;
-        vecRates[1] = kOff/(kOff + attach); //dimer off
+        vecRates.push_back(kOff); // this is the detachment rate
 
         //get wait time to the next event
         double sum = 0.0;
-        for(int i = 0; i < nEvents; i++)
+        for(int i = 0; i < nEvents - 1; i++)
         {
             sum += vecRates[i];
         }
@@ -123,27 +121,24 @@ void updateMt(vector<double> &tubule)
         exponential_distribution<double> waitTime(sum);
         const double dt = waitTime(rng); //decide time increment
 
-        //randomly choose between dimer on or off
+        //randomly choose between dimer on (*13) or off
         discrete_distribution<int> drawEvent(vecRates.begin(),
                                              vecRates.end());
         const int event = drawEvent(rng);
 
-        //depending on the event, update the height of the chosen
-        //protofilament
-        //cout << "pf " << randPf << " will be "
-         //    << (event > 0 ? " reduced \n" : " grown \n");
-        switch (event) {
-        case 0: tubule[randPf] += dimerLength;
-            ++lengthMt[randPf]; //increase length
-            break; //grow pf
-        case 1: tubule[randPf] -= dimerLength;
-            --lengthMt[randPf];
-            break; //reduce pf
-        default: cerr << "errr...couldn't chose an event...\n\n";
-            break;
+        if(event < nFils - 1){
+            ++tubule[event]; ++lengthMt[event];
+        }
+        else{
+            //choose a random pf to reduce
+            uniform_int_distribution<int> pfPicker(0, nFils - 1);
+            int randPf = pfPicker(rng);
+            --tubule[event]; --lengthMt[event];
         }
 
         t += dt; //increment timestep
+        //delete vecrates
+        vecRates.clear();
 
     }
 }
@@ -195,30 +190,26 @@ int main()
         cout << "output stream opened...\n\n";
     //write column names
     ofs << "sim, force, length_start, length_final, time_steps\n";
-
-    //use a range of forces until stall force
-    for(double forceIt = 1.0e-12; forceIt < 12.0e-12; forceIt+= 1.0e-12)
+    for(double forceIt = 1.0e-12; forceIt < 12.0e-12; forceIt+=1.0e-12)
     {
-        //run a loop for 200 simulations
-        for(int iterator = 0; iterator < 20; ++iterator)
-        {
 
-            cout << "force = " << force << ", iteration = " << iterator << endl;
+        for(int sim = 0; sim < 20; sim++){
+            cout << "force = " << force << ", iteration = " << sim << endl;
+            ofs << sim << ", " << force << ",";
             //initialise the new microtubule
             initialMt(tubule);
-            ofs << iterator << ",  " << force << ",";
+            //cout << "intial tubule" << endl;
             //getLengthMt(tubule, lengthMt);
-            ofs << *max_element(lengthMt.begin(), lengthMt.end()) << ",";
+            ofs << *max_element(lengthMt.begin(), lengthMt.end()) * 8e-9 << ",";
             //run the Gillespie loop until tMax = 200
             updateMt(tubule);
             //getLengthMt(tubule, lengthMt);
-            ofs << *max_element(lengthMt.begin(), lengthMt.end()) << "," << tMax
+            ofs << *max_element(lengthMt.begin(), lengthMt.end()) * 8e-9 << "," << tMax
                 << endl;
-            //printMt(tubule);
-
         }
         force = forceIt;
     }
+
     cout << "\n\nsimulations run...\n"
          << "\nMove to R code to summarise and plot!\n"
          << endl;

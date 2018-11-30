@@ -8,7 +8,8 @@ setwd("~/git/cpp_biol_course/")
 library(tidyverse)
 
 #'read in data and summarise mean elongation rate
-data = read_csv("data_p03_pratik.csv") %>% group_by(barrier_force = force)# %>% summarise(mean_rate = mean((length_final - length_start)/time_steps), sd = sd((length_final - length_start)/time_steps), n = length(length_final))
+data = read_csv("data_p03_pratik.csv") %>% 
+  mutate(rate = (length_final - length_start)/time_steps)
 head(data)
 dim(data)
 
@@ -18,4 +19,4 @@ force_stall = 13*(1.385e-23)*298*log(200/50)/(8e-9)
 
 force_stall
 
-ggplot(data, aes(x = barrier_force, y = mean_rate)) + geom_line()
+ggplot(data, aes(x = force, y = rate)) + geom_smooth()
