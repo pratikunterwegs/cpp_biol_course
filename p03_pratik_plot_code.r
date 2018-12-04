@@ -19,4 +19,6 @@ force_stall = 13*(1.385e-23)*298*log(200/50)/(8e-9)
 
 force_stall
 
-ggplot(data, aes(x = force, y = rate)) + geom_smooth()
+ggplot(data, aes(x = force, y = rate/1e-6)) + geom_point() + geom_vline(xintercept = force_stall) + labs(list(x = "force", y = "elongation rate"))
+
+ggsave(filename = "p03_pratik_plot.png", device = png()); dev.off()

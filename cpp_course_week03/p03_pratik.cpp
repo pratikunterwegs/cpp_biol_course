@@ -39,9 +39,9 @@ using namespace std;
 const int nFils = 13; //pfs in an mt
 const double dimerLength = 8.0; //dimer length in nm (1e-9)
 const double offset = dimerLength / 13.0; //offset length in nM (1e-9)
-const double tMax = 300.0; //time limit for the Gillespie loop
+const double tMax = 100.0; //time limit for the Gillespie loop
 const double Temp = 298.0; //temp in K
-const double kB = 1.38e-23;
+const double kB = 1.3806485e-23;
 const int nEvents = nFils + 1; //implemet 2 events - dimer on or off
 double force = 1.0e-12; //force starts at 1 piconewton
 const double kOn = 200.0; //rate of elongation per minute
@@ -193,7 +193,7 @@ int main()
     for(double forceIt = 1.0e-12; forceIt < 12.0e-12; forceIt+=1.0e-12)
     {
 
-        for(int sim = 0; sim < 20; sim++){
+        for(int sim = 0; sim < 10; sim++){
             cout << "force = " << force << ", iteration = " << sim << endl;
             ofs << sim << ", " << force << ",";
             //initialise the new microtubule
